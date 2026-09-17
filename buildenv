@@ -1,5 +1,5 @@
 # Update bump details accordingly. Use bump check to confirm.
-# bump: cpio-version /CPIO_VERSION="(.*)"/ https://ftp.gnu.org/gnu/cpio/cpio-2.15.tar.gz|semver:*
+# bump: cpio-version /CPIO_VERSION="(.*)"/ https://ftp.gnu.org/gnu/cpio/|re:/href="cpio-([\d.]+).tar.gz"/$1/|semver:*
 CPIO_VERSION="2.15" # Specify a stable release
 # export ZOPEN_STABLE_TAG="v${CPIO_VERSION}"
 

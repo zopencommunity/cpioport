@@ -1,5 +1,5 @@
 diff --git a/src/filetypes.h b/src/filetypes.h
-index e105ed0..e8799f5 100644
+index e105ed0..17492d1 100644
 --- a/src/filetypes.h
 +++ b/src/filetypes.h
 @@ -51,6 +51,7 @@
@@ -10,10 +10,13 @@ index e105ed0..e8799f5 100644
  #define CP_IFMT 0170000		/* Mask for all file type bits.  */
  
  #if defined(S_ISBLK)
-@@ -78,6 +79,73 @@
+@@ -77,6 +78,76 @@
+ #if defined(S_ISNWK)
  # define CP_IFNWK 0110000
  #endif
- 
++#endif
++#ifdef __MVS__   /* z/OS */
++
 +#  define LINUX_S_IFIFO       0010000   /* [XSI] named pipe (fifo) */
 +#  define LINUX_S_IFCHR       0020000   /* [XSI] character special */
 +#  define LINUX_S_IFDIR       0040000   /* [XSI] directory */
@@ -43,7 +46,7 @@ index e105ed0..e8799f5 100644
 +static inline mode_t
 +to_linux_mode(unsigned int inmode)
 +{
-+	mode_t outmode = (mode_t) (inmode & 0777);
++	mode_t outmode = (mode_t) (inmode & 07777);  /* Preserve all permission bits including setuid/setgid/sticky */
 +
 +	if ((inmode & ZOS_S_IFMT) == ZOS_S_IFIFO) { outmode |= LINUX_S_IFIFO; }
 +	if ((inmode & ZOS_S_IFMT) == ZOS_S_IFCHR) { outmode |= LINUX_S_IFCHR; }
@@ -58,15 +61,16 @@ index e105ed0..e8799f5 100644
 +static inline unsigned int
 +to_zos_mode(mode_t inmode)
 +{
-+	unsigned int outmode = (unsigned int) (inmode & 0777);
++	unsigned int outmode = (unsigned int) (inmode & 07777);  /* Preserve all permission bits including setuid/setgid/sticky */
++	unsigned int file_type = inmode & 0170000;  /* Linux S_IFMT mask */
 +
-+        if (inmode & LINUX_S_IFIFO) { outmode |= ZOS_S_IFIFO; }
-+        if (inmode & LINUX_S_IFCHR) { outmode |= ZOS_S_IFCHR; }
-+        if (inmode & LINUX_S_IFDIR) { outmode |= ZOS_S_IFDIR; }
-+        if (inmode & LINUX_S_IFBLK) { outmode |= ZOS_S_IFBLK; }
-+        if (inmode & LINUX_S_IFREG) { outmode |= ZOS_S_IFREG; }
-+        if (inmode & LINUX_S_IFLNK) { outmode |= ZOS_S_IFLNK; }
-+        if (inmode & LINUX_S_IFSOCK) { outmode |= ZOS_S_IFSOCK; }
++        if (file_type == LINUX_S_IFIFO)  { outmode |= ZOS_S_IFIFO; }
++        else if (file_type == LINUX_S_IFCHR)  { outmode |= ZOS_S_IFCHR; }
++        else if (file_type == LINUX_S_IFDIR)  { outmode |= ZOS_S_IFDIR; }
++        else if (file_type == LINUX_S_IFBLK)  { outmode |= ZOS_S_IFBLK; }
++        else if (file_type == LINUX_S_IFREG)  { outmode |= ZOS_S_IFREG; }
++        else if (file_type == LINUX_S_IFLNK)  { outmode |= ZOS_S_IFLNK; }
++        else if (file_type == LINUX_S_IFSOCK) { outmode |= ZOS_S_IFSOCK; }
 +
 +        return outmode;
 +}
@@ -80,7 +84,6 @@ index e105ed0..e8799f5 100644
 +#  define CP_IFIFO  ZOS_S_IFIFO 
 +#define CP_IFNWK 0
 +#endif
-+
+ 
  #ifndef S_ISLNK
  # define lstat stat
- #endif

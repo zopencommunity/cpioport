@@ -1,0 +1,59 @@
+diff --git a/src/copyout.c b/src/copyout.c
+index 582e696..f3d7bd1 100644
+--- a/src/copyout.c
++++ b/src/copyout.c
+@@ -335,8 +335,14 @@ write_out_new_ascii_header (const char *magic_string,
+   to_ascii_or_warn (p, file_hdr->c_ino, 8, LG_16,
+ 		    file_hdr->c_name, _("inode number"));
+   p += 8;
++#ifdef __MVS__
++  /* On z/OS, convert from z/OS 32-bit mode to Linux 16-bit mode for portability */
++  to_ascii_or_warn (p, to_linux_mode(file_hdr->c_mode), 8, LG_16, file_hdr->c_name,
++		    _("file mode"));
++#else
+   to_ascii_or_warn (p, file_hdr->c_mode, 8, LG_16, file_hdr->c_name,
+ 		    _("file mode"));
++#endif
+   p += 8;
+   to_ascii_or_warn (p, file_hdr->c_uid, 8, LG_16, file_hdr->c_name,
+ 		    _("uid"));
+@@ -398,8 +404,14 @@ write_out_old_ascii_header (dev_t dev, dev_t rdev,
+   to_ascii_or_warn (p, file_hdr->c_ino, 6, LG_8, file_hdr->c_name,
+ 		    _("inode number"));
+   p += 6;
++#ifdef __MVS__
++  /* On z/OS, convert from z/OS 32-bit mode to Linux 16-bit mode for portability */
++  to_ascii_or_warn (p, to_linux_mode(file_hdr->c_mode), 6, LG_8, file_hdr->c_name,
++		    _("file mode"));
++#else
+   to_ascii_or_warn (p, file_hdr->c_mode, 6, LG_8, file_hdr->c_name,
+ 		    _("file mode"));
++#endif
+   p += 6;
+   to_ascii_or_warn (p, file_hdr->c_uid, 6, LG_8, file_hdr->c_name, _("uid"));
+   p += 6;
+@@ -472,9 +484,15 @@ write_out_binary_header (dev_t rdev,
+   if (short_hdr.c_ino != file_hdr->c_ino)
+     field_width_warning (file_hdr->c_name, _("inode number"));
+ 
++#ifdef __MVS__
++  /* On z/OS, convert from z/OS 32-bit mode to Linux 16-bit mode for portability */
++  short_hdr.c_mode = to_linux_mode(file_hdr->c_mode);
++  /* No field width warning needed - conversion handles it */
++#else
+   short_hdr.c_mode = file_hdr->c_mode & 0xFFFF;
+   if (short_hdr.c_mode != file_hdr->c_mode)
+     field_width_warning (file_hdr->c_name, _("file mode"));
++#endif
+ 
+   short_hdr.c_uid = file_hdr->c_uid & 0xFFFF;
+   if (short_hdr.c_uid != file_hdr->c_uid)
+@@ -652,7 +670,7 @@ process_copy_out (void)
+ 
+ 	  if (archive_format == arf_tar || archive_format == arf_ustar)
+ 	    {
+-	      if (file_hdr.c_mode & CP_IFDIR)
++	      if ((file_hdr.c_mode & CP_IFMT) == CP_IFDIR)
+ 		{
+ 		  /* Make sure the name ends with a slash */
+ 		  if (!ds_endswith (&input_name, '/'))

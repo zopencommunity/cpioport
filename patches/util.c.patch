@@ -1,5 +1,5 @@
 diff --git a/src/util.c b/src/util.c
-index 4a9e501..ae2b3fd 100644
+index 4a9e501..14f6fbe 100644
 --- a/src/util.c
 +++ b/src/util.c
 @@ -601,7 +601,6 @@ create_all_directories (char const *name)
@@ -10,7 +10,7 @@ index 4a9e501..ae2b3fd 100644
    if (dir == NULL)
      error (PAXEXIT_FAILURE, 0, _("virtual memory exhausted"));
  
-@@ -1158,7 +1157,11 @@ cpio_to_stat (struct stat *st, struct cpio_file_stat *hdr)
+@@ -1158,33 +1157,37 @@ cpio_to_stat (struct stat *st, struct cpio_file_stat *hdr)
    memset (st, 0, sizeof (*st));
    st->st_dev = makedev (hdr->c_dev_maj, hdr->c_dev_min);
    st->st_ino = hdr->c_ino;
@@ -18,7 +18,41 @@ index 4a9e501..ae2b3fd 100644
 +  st->st_mode = hdr->c_mode & 07777;
 +#else
    st->st_mode = hdr->c_mode & 0777;
+-  if (hdr->c_mode & CP_IFREG)
 +#endif
-   if (hdr->c_mode & CP_IFREG)
++  if ((hdr->c_mode & CP_IFMT) == CP_IFREG)
      st->st_mode |= S_IFREG;
-   else if (hdr->c_mode & CP_IFDIR)
+-  else if (hdr->c_mode & CP_IFDIR)
++  else if ((hdr->c_mode & CP_IFMT) == CP_IFDIR)
+     st->st_mode |= S_IFDIR;
+ #ifdef S_IFBLK
+-  else if (hdr->c_mode & CP_IFBLK)
++  else if ((hdr->c_mode & CP_IFMT) == CP_IFBLK)
+     st->st_mode |= S_IFBLK;
+ #endif
+ #ifdef S_IFCHR
+-  else if (hdr->c_mode & CP_IFCHR)
++  else if ((hdr->c_mode & CP_IFMT) == CP_IFCHR)
+     st->st_mode |= S_IFCHR;
+ #endif
+ #ifdef S_IFFIFO
+-  else if (hdr->c_mode & CP_IFIFO)
++  else if ((hdr->c_mode & CP_IFMT) == CP_IFIFO)
+     st->st_mode |= S_IFIFO;
+ #endif
+ #ifdef S_IFLNK
+-  else if (hdr->c_mode & CP_IFLNK)
++  else if ((hdr->c_mode & CP_IFMT) == CP_IFLNK)
+     st->st_mode |= S_IFLNK;
+ #endif
+ #ifdef S_IFSOCK
+-  else if (hdr->c_mode & CP_IFSOCK)
++  else if ((hdr->c_mode & CP_IFMT) == CP_IFSOCK)
+     st->st_mode |= S_IFSOCK;
+ #endif
+ #ifdef S_IFNWK
+-  else if (hdr->c_mode & CP_IFNWK)
++  else if ((hdr->c_mode & CP_IFMT) == CP_IFNWK)
+     st->st_mode |= S_IFNWK;
+ #endif
+   st->st_nlink = hdr->c_nlink;
