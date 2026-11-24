@@ -1,8 +1,30 @@
 diff --git a/src/copyout.c b/src/copyout.c
-index 582e696..f3d7bd1 100644
+index 582e696..ee213ce 100644
 --- a/src/copyout.c
 +++ b/src/copyout.c
-@@ -335,8 +335,14 @@ write_out_new_ascii_header (const char *magic_string,
+@@ -17,6 +17,9 @@
+    Boston, MA 02110-1301 USA.  */
+ 
+ #include <system.h>
++#ifdef __MVS__
++#include <zos.h>	/* __disableautocvt: read file content verbatim */
++#endif
+ 
+ #include <stdio.h>
+ #include <sys/types.h>
+@@ -202,6 +205,11 @@ writeout_defered_file (struct cpio_file_stat *header, int out_file_des)
+ 
+   in_file_des = open (header->c_name,
+ 		      O_RDONLY | O_BINARY, 0);
++#ifdef __MVS__
++  /* See the copyout loop: read file content verbatim.  */
++  if (in_file_des >= 0)
++    __disableautocvt (in_file_des);
++#endif
+   if (in_file_des < 0)
+     {
+       open_error (header->c_name);
+@@ -335,8 +343,14 @@ write_out_new_ascii_header (const char *magic_string,
    to_ascii_or_warn (p, file_hdr->c_ino, 8, LG_16,
  		    file_hdr->c_name, _("inode number"));
    p += 8;
@@ -17,7 +39,7 @@ index 582e696..f3d7bd1 100644
    p += 8;
    to_ascii_or_warn (p, file_hdr->c_uid, 8, LG_16, file_hdr->c_name,
  		    _("uid"));
-@@ -398,8 +404,14 @@ write_out_old_ascii_header (dev_t dev, dev_t rdev,
+@@ -398,8 +412,14 @@ write_out_old_ascii_header (dev_t dev, dev_t rdev,
    to_ascii_or_warn (p, file_hdr->c_ino, 6, LG_8, file_hdr->c_name,
  		    _("inode number"));
    p += 6;
@@ -32,7 +54,7 @@ index 582e696..f3d7bd1 100644
    p += 6;
    to_ascii_or_warn (p, file_hdr->c_uid, 6, LG_8, file_hdr->c_name, _("uid"));
    p += 6;
-@@ -472,9 +484,15 @@ write_out_binary_header (dev_t rdev,
+@@ -472,9 +492,15 @@ write_out_binary_header (dev_t rdev,
    if (short_hdr.c_ino != file_hdr->c_ino)
      field_width_warning (file_hdr->c_name, _("inode number"));
  
@@ -48,7 +70,7 @@ index 582e696..f3d7bd1 100644
  
    short_hdr.c_uid = file_hdr->c_uid & 0xFFFF;
    if (short_hdr.c_uid != file_hdr->c_uid)
-@@ -652,7 +670,7 @@ process_copy_out (void)
+@@ -652,7 +678,7 @@ process_copy_out (void)
  
  	  if (archive_format == arf_tar || archive_format == arf_ustar)
  	    {
@@ -57,3 +79,17 @@ index 582e696..f3d7bd1 100644
  		{
  		  /* Make sure the name ends with a slash */
  		  if (!ds_endswith (&input_name, '/'))
+@@ -697,6 +723,13 @@ process_copy_out (void)
+ 		}
+ 	      in_file_des = open (orig_file_name,
+ 				  O_RDONLY | O_BINARY, 0);
++#ifdef __MVS__
++	      /* Archive content must be read byte-for-byte as it exists on
++		 * disk; defeat zoslib autoconversion (untagged or foreign-CCSID
++		 * files would otherwise be silently transcoded).  */
++	      if (in_file_des >= 0)
++		__disableautocvt (in_file_des);
++#endif
+ 	      if (in_file_des < 0)
+ 		{
+ 		  open_error (orig_file_name);
