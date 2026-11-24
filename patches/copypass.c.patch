@@ -1,0 +1,39 @@
+diff --git a/src/copypass.c b/src/copypass.c
+index 7e1d8ed..6d75dd8 100644
+--- a/src/copypass.c
++++ b/src/copypass.c
+@@ -17,6 +17,9 @@
+    Boston, MA 02110-1301 USA.  */
+ 
+ #include <system.h>
++#ifdef __MVS__
++#include <zos.h>	/* verbatim byte I/O for copied file content */
++#endif
+ 
+ #include <stdio.h>
+ #include <sys/types.h>
+@@ -162,6 +165,12 @@ process_copy_pass (void)
+ 	    {
+ 	      in_file_des = open (input_name.ds_string,
+ 				  O_RDONLY | O_BINARY, 0);
++#ifdef __MVS__
++	      /* Copy file content byte-for-byte; defeat zoslib
++		 * autoconversion on the source file.  */
++	      if (in_file_des >= 0)
++		__disableautocvt (in_file_des);
++#endif
+ 	      if (in_file_des < 0)
+ 		{
+ 		  open_error (input_name.ds_string);
+@@ -181,6 +190,11 @@ process_copy_pass (void)
+ 		  close (in_file_des);
+ 		  continue;
+ 		}
++#ifdef __MVS__
++	      /* Write content byte-for-byte; tag the file binary so no
++		 * tag-honoring tool ever converts it on read.  */
++	      __setfdbinary (out_file_des);
++#endif
+ 
+ 	      copy_files_disk_to_disk (in_file_des, out_file_des, in_file_stat.st_size, input_name.ds_string);
+ 	      disk_empty_output_buffer (out_file_des, true);

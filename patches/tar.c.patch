@@ -1,5 +1,5 @@
 diff --git a/src/tar.c b/src/tar.c
-index 318cbbe..5659e5b 100644
+index 318cbbe..55ccdcb 100644
 --- a/src/tar.c
 +++ b/src/tar.c
 @@ -126,6 +126,66 @@ tar_checksum (struct tar_header *tar_hdr)
@@ -69,25 +69,29 @@ index 318cbbe..5659e5b 100644
  /* Write out header FILE_HDR, including the file name, to file
     descriptor OUT_DES.  */
  
-@@ -159,10 +219,17 @@ write_out_tar_header (struct cpio_file_stat *file_hdr, int out_des)
+@@ -159,10 +219,20 @@ write_out_tar_header (struct cpio_file_stat *file_hdr, int out_des)
    /* Ustar standard (POSIX.1-1988) requires the mode to contain only 3 octal
       digits */
    TO_OCT (file_hdr, c_mode & MODE_ALL, 8, tar_hdr, mode);
 +#ifdef __MVS__
 +  to_tar_number (file_hdr->c_uid, tar_hdr->uid, sizeof tar_hdr->uid);
 +  to_tar_number (file_hdr->c_gid, tar_hdr->gid, sizeof tar_hdr->gid);
-+  to_tar_number(file_hdr->c_filesize, tar_hdr->size, sizeof tar_hdr->size);
 +  to_tar_number(file_hdr->c_mtime, tar_hdr->mtime, sizeof tar_hdr->mtime);
 +#else
    TO_OCT (file_hdr, c_uid, 8, tar_hdr, uid);
    TO_OCT (file_hdr, c_gid, 8, tar_hdr, gid);
-   TO_OCT (file_hdr, c_filesize, 12, tar_hdr, size);
+-  TO_OCT (file_hdr, c_filesize, 12, tar_hdr, size);
    TO_OCT (file_hdr, c_mtime, 12, tar_hdr, mtime);
 +#endif
++  /* The file size must stay within the ustar octal range; rejecting
++     larger values is the CVE-2019-14866 fix, so do not fall back to
++     base-256 encoding for it (that would archive huge files instead
++     of failing fast).  */
++  TO_OCT (file_hdr, c_filesize, 12, tar_hdr, size);
  
    switch (file_hdr->c_mode & CP_IFMT)
      {
-@@ -219,8 +286,13 @@ write_out_tar_header (struct cpio_file_stat *file_hdr, int out_des)
+@@ -219,8 +289,13 @@ write_out_tar_header (struct cpio_file_stat *file_hdr, int out_des)
        if (name)
  	strcpy (tar_hdr->gname, name);
  
@@ -101,7 +105,7 @@ index 318cbbe..5659e5b 100644
      }
  
    to_ascii (tar_hdr->chksum, tar_checksum (tar_hdr), 8, LG_8, true);
-@@ -323,19 +395,42 @@ read_in_tar_header (struct cpio_file_stat *file_hdr, int in_des)
+@@ -323,19 +398,42 @@ read_in_tar_header (struct cpio_file_stat *file_hdr, int in_des)
       names in /etc/passwd and /etc/groups.  (98/10/15) -BEM */
        if (archive_format == arf_ustar && !numeric_uid
  	  && (uidp = getuidbyname (tar_hdr->uname)))
