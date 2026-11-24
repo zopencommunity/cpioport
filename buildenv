@@ -38,7 +38,7 @@ export ZOPEN_SYSTEM_PREREQ=""
 ###
 
 #export ZOPEN_BOOTSTRAP="skip" ## Bootstrap program to run (defaults to './bootstrap')
-#export ZOPEN_CHECK="skip"     ## Check program to run (defaults to 'make')
+export ZOPEN_CHECK="zopen_check"     ## Check program to run (defaults to 'make')
 #export ZOPEN_CONFIGURE="skip" ## Configuration program to run (defaults to './configure')
 #export ZOPEN_INSTALL="skip"   ## Installation program to run (defaults to 'make')
 #export ZOPEN_MAKE="skip"      ## Build program to run (defaults to 'make')
@@ -49,6 +49,11 @@ export ZOPEN_SYSTEM_PREREQ=""
 ### Required user-supplied functions
 ###
 
+zopen_check()
+{
+  ZOSLIB_ERROR_COMPAT=1 _EDC_ADD_ERRNO2=0 make check
+}
+
 zopen_check_results()
 {
   dir="$1"
@@ -58,6 +63,17 @@ zopen_check_results()
   skipped=$(grep -oP '\K[0-9]+(?= test was skipped|tests were skipped)' "$chk")
 
   tests_run=$(grep -oP 'ERROR: \K[0-9]+(?= tests were run)' "$chk")
+
+  # The "ERROR: N tests were run" summary is only printed when there are
+  # failures.  On a full pass autotest prints "N tests were successful."
+  # instead, so fall back to that (and to counting the per-test "ok"
+  # lines) to keep totalTests sane when everything passes.
+  if [ -z "$tests_run" ]; then
+    tests_run=$(grep -oP '\K[0-9]+(?= tests? were successful)' "$chk")
+  fi
+  if [ -z "$tests_run" ]; then
+    tests_run=$(grep -cE ' +ok$' "$chk")
+  fi
 
   # Default values to 0 if variables are empty (in case grep doesn't find matches)
   failures=${failures:-0}
